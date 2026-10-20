@@ -5,7 +5,6 @@
     --color-tertiary: #0284c7;
     --color-neutral: #64748b;
     --color-accent: #3b82f6;
-    --color-sidebar: #1e293b;
     --color-background: #f8fafc;
     --color-text-main: #334155;
     --color-text-light: #94a3b8;
@@ -112,7 +111,7 @@ ol {
 .sidebar {
     width: var(--sidebar-width);
     height: 100vh;
-    background-color: var(--color-sidebar);
+    background-color: var(--color-primary);
     color: var(--color-white);
     padding: var(--spacing-lg);
     display: flex;
@@ -174,22 +173,6 @@ ol {
 
 .contact-item:hover {
     color: var(--color-secondary);
-}
-
-.contact-info {
-    padding-top: var(--spacing-md);
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.contact-icon {
-    width: 18px;
-    height: 18px;
-    flex-shrink: 0;
-    fill: none;
-    stroke: var(--color-accent);
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
 }
 
 /* Tabs (from Tabs.module.css) */
@@ -653,8 +636,9 @@ ol {
 .highlight-card p {
     margin-top: var(--spacing-sm);
     font-size: 0.95rem;
+    font-weight: 600;
     line-height: 1.55;
-    color: var(--color-text-main);
+    color: var(--color-primary);
 }
 
 .position-grid {
