@@ -1,9 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Publications logic
     const publications = [
-        "Alexander I. Iliev, Ahmed Noureldin Brema Noureldi, Burak Kagan Yılmazer, Robert Richartz. How can AI be used to enhance creativity in Artistic Domains. International Conference on Management of Digital EcoSystems MEDES'25, Springer, 2026. ISSN:1865-0929, SJR (Scopus):0.182 Q4 (Scopus)",
-        "Alexander I. Iliev, Amirreza Soltani, Vivek Devappally Shivanna, Sanjeeth Chittyala. How Can AI Systems Be Made to Understand and Process Abstract Concepts. International Conference on Management of Digital EcoSystems MEDES'25, Springer, 2026, ISSN:1865-0929, SJR (Scopus):0.182 Q4 (Scopus)",
-        "Alexander I. Iliev, Pradyumna S.R. Hybrid AI for Aerial Object Recognition A NeuroSymbolic Approach. International Conference on Management of Digital EcoSystems MEDES'25, Springer, 2026, ISSN:1865-0929, SJR (Scopus):0.182 Q4 (Scopus)",
+        "I. Iliev, A., Malik, A., Anil Gowda, G., & Samal, S. (2026). AI Use Cases for the Digital Documentation and Preservation of Cultural and Scientific Heritage. Digital Presentation and Preservation of Cultural and Scientific Heritage, 16, 231-244. https://doi.org/10.55630/dipp.2026.16.19",
+        "I. Iliev, A., Mallick, S., & Ganesh, G. (2026). AI-Assisted Automated Code Refactoring and Technical Debt Reduction: Supporting Digital Knowledge Documentation and Preservation. Digital Presentation and Preservation of Cultural and Scientific Heritage, 16, 181-193. https://doi.org/10.55630/dipp.2026.16.15",
+        "Murthy Keshav Murthy, H., & I. Iliev, A. (2026). Trustworthy Retrieval-Augmented Generation for the Digital Preservation and Transparent Presentation of Biomedical Scientific Heritage. Digital Presentation and Preservation of Cultural and Scientific Heritage, 16, 377-386. https://doi.org/10.55630/dipp.2026.16.31",
+        "D. B. Durak, T. S. Gada, F. E. G. Kotb Akrab and A. I. Iliev, \"Improving Software Requirements Quality Using LLM-Based Repair-Augmented Retrieval,\" 2026 International Conference on Computer Systems and Technologies (CompSysTech), Ruse, Bulgaria, 2026, pp. 1-8, DOI: 10.1109/CompSysTech69798.2026.11683218, [Link](https://ieeexplore.ieee.org/abstract/document/11683218)",
+        "Alexander I. Iliev. AI Popular Systems Architecture, Capabilities, and Comparative Analysis, LAP Lambert Academic Publishing, ISBN: 978-66-30-21444-4, 2026, p. 285, [Link](https://www.morebooks.shop/shop-ui/shop/product/9786630214444)",
+        "Alexander I. Iliev. Practical Benchmarking and Hands-On Evaluation of AI Popular Systems, LAP Lambert Academic Publishing, ISBN: 978-66-30-22514-3, 2026, p. 154, [Link](https://www.morebooks.shop/shop-ui/shop/product/9786630225143)",
+        "Alexander I. Iliev. Smart Python for Machine Learning and Intelligent Modelling, Foundations and Classical Machine Learning | Part 1, LAP Lambert Academic Publishing, ISBN: 978-66-30-10726-5, 2026, p. 305, [Link](https://www.morebooks.shop/shop-ui/shop/product/9786630107265)",
+        "Alexander I. Iliev. Smart Python for Machine Learning and Intelligent Systems, Deep Learning, Transfer Learning, and AI Engineering | Part 2, LAP Lambert Academic Publishing, ISBN: 978-66-30-21092-7, 2026, p. 313, [Link](https://www.morebooks.shop/shop-ui/shop/product/9786630210927)",
+        "Alexander I. Iliev, Ahmed Noureldin Brema Noureldi, Burak Kagan Yılmazer, Robert Richartz. How can AI be used to enhance creativity in Artistic Domains. International Conference on Management of Digital EcoSystems MEDES'25, In Communications in Computer and Information Science series, Vol. 3103, Springer, 2026, ISSN:1865-0929, SJR (Scopus):0.181 (2025), Q4 (Scopus), pp 316–330",
+        "Alexander I. Iliev, Amirreza Soltani, Vivek Devappally Shivanna, Sanjeeth Chittyala. How Can AI Systems Be Made to Understand and Process Abstract Concepts. International Conference on Management of Digital EcoSystems MEDES'25, In Communications in Computer and Information Science series, Vol. 3103, Springer, 2026, ISSN:1865-0929, SJR (Scopus):0.181 (2025), Q4 (Scopus), pp 295–300",
+        "Alexander I. Iliev, Pradyumna S.R. Horizontal vs Oriented Bounding Boxes in Aerial Object Detection Integrating Symbolic Reasoning with Oriented Bounding Box Detection in Aerial Imagery. International Conference on Management of Digital EcoSystems MEDES'25, In Communications in Computer and Information Science series, Vol. 3103, Springer, 2026, ISSN:1865-0929, SJR (Scopus):0.181 (2025), Q4 (Scopus), pp 582–593",
         "A. I. Iliev, D. Singh, S. Chittyala. Bias Detection and Mitigation in Large Language Models for Code Generation. IEEE Internet of Things, IEEE, 2025, DOI:10.1109/JIOT.2025.3636829, SJR (Scopus):2.483 Q1 - оглавява ранглистата (Web of Science)",
         "Alexander I. Iliev, Nithin Jayagovindan. Intelligent Autonomous Vehicles (IAV) using Artificial Intelligence Focusing on Perception. IS&T International Symposium on Electronic Imaging Science and Technology, 37, 3, 2025, DOI:https://doi.org/10.2352/ei.2025.37.3.mobmu-324, 324-327. SJR (Scopus):0.222",
         "I. Iliev, A.. Discovery of Deepfakes in Art. Digital Presentation and Preservation of Cultural and Scientific Heritage, 15, BAN, 2025, DOI:https://doi.org/10.55630/dipp.2025.15.5, 55-64. SJR (Scopus):0.243 SJR, непопадащ в Q категория (Web of Science)",
@@ -66,12 +74,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const publicationsList = document.getElementById('publications-list');
 
+    // Append text to an element, turning [text](url) markdown links into anchors
+    const appendWithLinks = (el, text) => {
+        const linkPattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+        let lastIndex = 0;
+        for (const match of text.matchAll(linkPattern)) {
+            el.append(text.slice(lastIndex, match.index));
+            const a = document.createElement('a');
+            a.href = match[2];
+            a.textContent = match[1];
+            a.className = 'link';
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            el.append(a);
+            lastIndex = match.index + match[0].length;
+        }
+        el.append(text.slice(lastIndex));
+    };
+
     // Populate publications list
     if (publicationsList) {
         publications.forEach(pub => {
             const li = document.createElement('li');
             li.className = 'list-item';
-            li.textContent = pub;
+            appendWithLinks(li, pub);
             publicationsList.appendChild(li);
         });
     }
