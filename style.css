@@ -1,8 +1,11 @@
 :root {
     /* Colors */
     --color-primary: #0f172a;
-    --color-secondary: #3b82f6;
-    --color-accent: #60a5fa;
+    --color-secondary: #2563eb;
+    --color-tertiary: #0284c7;
+    --color-neutral: #64748b;
+    --color-accent: #3b82f6;
+    --color-sidebar: #1e293b;
     --color-background: #f8fafc;
     --color-text-main: #334155;
     --color-text-light: #94a3b8;
@@ -10,7 +13,7 @@
 
     /* Typography */
     --font-main: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-    --font-heading: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+    --font-heading: 'Plus Jakarta Sans', 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
     /* Spacing */
@@ -109,7 +112,7 @@ ol {
 .sidebar {
     width: var(--sidebar-width);
     height: 100vh;
-    background-color: var(--color-primary);
+    background-color: var(--color-sidebar);
     color: var(--color-white);
     padding: var(--spacing-lg);
     display: flex;
@@ -171,6 +174,22 @@ ol {
 
 .contact-item:hover {
     color: var(--color-secondary);
+}
+
+.contact-info {
+    padding-top: var(--spacing-md);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.contact-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    fill: none;
+    stroke: var(--color-accent);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 /* Tabs (from Tabs.module.css) */
@@ -726,7 +745,6 @@ ol {
     justify-content: space-between;
     align-items: center;
     gap: var(--spacing-xs);
-    margin-bottom: 0.5rem;
 }
 
 .lang-name,
@@ -748,27 +766,9 @@ ol {
 }
 
 .pill-muted {
-    color: #64748b;
+    color: var(--color-neutral);
     background: #f1f5f9;
     border-color: #e2e8f0;
-}
-
-.level-bar {
-    height: 4px;
-    border-radius: 999px;
-    background: #f1f5f9;
-    overflow: hidden;
-}
-
-.level-bar span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--color-secondary);
-}
-
-.level-bar-muted span {
-    background: #94a3b8;
 }
 
 .member-row {
@@ -849,7 +849,7 @@ ol {
 }
 
 .featured-cta:hover {
-    background: #2563eb;
+    background: #1d4ed8;
 }
 
 .featured-news {
