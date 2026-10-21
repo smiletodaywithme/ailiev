@@ -92,15 +92,343 @@ document.addEventListener('DOMContentLoaded', () => {
         el.append(text.slice(lastIndex));
     };
 
-    // Populate publications list
-    if (publicationsList) {
-        publications.forEach(pub => {
-            const li = document.createElement('li');
-            li.className = 'list-item';
-            appendWithLinks(li, pub);
-            publicationsList.appendChild(li);
+    // Derive display fields from a raw citation string; the citation text itself is shown unchanged
+    const parsePublication = (raw) => {
+        const clean = raw.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '').replace(/https?:\/\/\S+/g, '')
+            .replace(/DOI:?\s*10\.\S+/gi, '').replace(/IS[BS]N:?\s*[\d\s-]+/gi, '');
+        const years = (clean.match(/\b(199\d|20[0-3]\d)\b/g) || []).map(Number);
+
+        let title = null;
+        const quoted = raw.match(/[“"]([^”"]{12,})[”"]/);
+        const apa = raw.match(/^.*?\(\d{4}[^)]*\)\.?\s+(.+?[.?])\s+[A-Z]/);
+        const authorsEnd = raw.match(/^(.+?(?:\.\.|[a-zà-ÿ]{3}\.|[a-z]{3,} [A-Z]\.[A-Z]\.))\s+(?=[A-Z])/);
+        if (quoted) {
+            title = quoted[1];
+        } else if (apa) {
+            title = apa[1];
+        } else if (authorsEnd) {
+            const rest = raw.slice(authorsEnd[0].length);
+            const book = rest.match(/^(.+?)(?:,|\.)\s+(?:LAP )?Lambert/);
+            const sentence = rest.match(/^(.+?[.?])\s+(?=[A-Z])/);
+            title = book ? book[1] : sentence ? sentence[1] : null;
+        }
+        if (title) title = title.replace(/[.,]$/, '').trim();
+
+        let type = 'journal';
+        if (/Lambert|Monograph|Chapter/i.test(raw)) type = 'book';
+        else if (/Comptes Rendus/.test(raw)) type = 'journal';
+        else if (/Conference|Proceedings|Proc\.|Symposium|Workshop|Meeting|MEDES|CompSysTech|\(SAI\)|SAI 20|ICASSP|Asilomar|Intelligent Computing|Digital Presentation and Preservation/i.test(raw)) type = 'conference';
+
+        const doiMatch = raw.match(/(?:doi\.org\/|DOI:?\s*)(10\.\d{4,}\/[^\s,]+)/i);
+        let doi = doiMatch ? doiMatch[1].replace(/[.,;)]+$/, '') : null;
+        if (doi && doi.endsWith('-')) doi = null;
+
+        return {
+            raw,
+            title,
+            type,
+            year: years.length ? Math.max(...years) : null,
+            quartile: (raw.match(/\bQ[1-4]\b/) || [])[0] || null,
+            sjr: (raw.match(/SJR[^:\d]*:?\s*(\d+\.\d+)/) || [])[1] || null,
+            scopus: /SJR|\(Scopus\)|Indexed in Scopus/.test(raw) && !/consideration/i.test(raw),
+            wos: /\(Web of Science\)/.test(raw) && !/consideration/i.test(raw),
+            doi,
+        };
+    };
+
+    // Citation without the title (shown separately as the heading)
+    const citationWithoutTitle = (pub) => {
+        if (!pub.title) return pub.raw;
+        const escaped = pub.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return pub.raw.replace(new RegExp(`[“"]?${escaped}[.,]?[”"]?`), '')
+            .replace(/\s+,/g, ',').replace(/,\s*,/g, ',').replace(/\.\s*\./g, '.').replace(/\s{2,}/g, ' ').trim();
+    };
+
+    const TYPE_LABELS = { journal: 'Journal Article', conference: 'Conference Paper', book: 'Book / Chapter' };
+    const TOPICS = {
+        deepfake: /deepfake/i,
+        audio: /speech|audio|emotion|acoustic|watermark|sound|voice|glottal|binaural/i,
+        ai: /LLM|language model|retrieval-augmented|neural|deep learning|machine learning|artificial intelligence|\bAI\b|symbolic/i,
+        health: /health|diabet|stroke|wellness|nutrition|motor|children|biomedical|liver/i,
+    };
+    const ICONS = {
+        copy: '<rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />',
+        open: '<path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />',
+    };
+    const el = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text != null) node.textContent = text;
+        return node;
+    };
+    const iconButton = (tag, label, icon) => {
+        const node = el(tag, 'pub-btn');
+        node.innerHTML = `<svg viewBox="0 0 24 24">${ICONS[icon]}</svg>`;
+        node.append(label);
+        return node;
+    };
+
+    const parsedPublications = publications.map(parsePublication);
+    const latestYear = Math.max(...parsedPublications.map(p => p.year || 0));
+
+    const renderPublication = (pub, index) => {
+        const card = el('article', 'pub-card');
+        card.dataset.type = pub.type;
+        card.dataset.topics = Object.keys(TOPICS).filter(key => TOPICS[key].test(pub.raw)).join(' ');
+
+        const side = el('div', 'pub-side');
+        side.append(el('span', `pub-year${pub.year === latestYear ? ' is-latest' : ''}`, pub.year || '—'));
+        side.append(el('span', 'pub-kind', pub.type === 'book' ? 'Book' : pub.type === 'conference' ? 'Conference' : 'Journal'));
+        const sideBadges = el('div', 'pub-side-badges');
+        if (pub.quartile) sideBadges.append(el('span', 'pub-badge is-strong', pub.quartile));
+        if (pub.sjr) sideBadges.append(el('span', 'pub-badge', `SJR ${pub.sjr}`));
+        if (sideBadges.children.length) side.append(sideBadges);
+
+        const main = el('div', 'pub-main');
+        const pills = el('div', 'pub-pills');
+        if (pub.scopus) pills.append(el('span', 'pub-pill is-primary', 'Scopus'));
+        if (pub.wos) pills.append(el('span', 'pub-pill is-tertiary', 'Web of Science'));
+        if (pills.children.length) main.append(pills);
+        if (pub.title) main.append(el('h3', 'pub-title', pub.title));
+        const citation = el('p', 'pub-citation');
+        appendWithLinks(citation, citationWithoutTitle(pub));
+        main.append(citation);
+
+        const footer = el('div', 'pub-footer');
+        const actions = el('div', 'pub-actions');
+        const copy = iconButton('button', 'Copy Citation', 'copy');
+        copy.type = 'button';
+        copy.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(pub.raw.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '$2'));
+                copy.lastChild.textContent = 'Copied';
+            } catch {
+                copy.lastChild.textContent = 'Copy failed';
+            }
+            setTimeout(() => { copy.lastChild.textContent = 'Copy Citation'; }, 1600);
         });
+        actions.append(copy);
+        if (pub.doi) {
+            const doi = iconButton('a', 'DOI Link', 'open');
+            doi.href = `https://doi.org/${pub.doi}`;
+            doi.target = '_blank';
+            doi.rel = 'noopener noreferrer';
+            actions.append(doi);
+        }
+        footer.append(actions, el('span', 'pub-meta', `${TYPE_LABELS[pub.type]} · #${index + 1}`));
+        main.append(footer);
+
+        card.append(side, main);
+        return card;
+    };
+
+    if (publicationsList) {
+        const cards = parsedPublications.map(renderPublication);
+        publicationsList.append(...cards);
+
+        const pubStats = {
+            total: parsedPublications.length,
+            first: Math.min(...parsedPublications.map(p => p.year || Infinity)),
+            indexed: parsedPublications.filter(p => p.scopus || p.wos).length,
+            conference: parsedPublications.filter(p => p.type === 'conference').length,
+            books: parsedPublications.filter(p => p.type === 'book').length,
+        };
+        document.querySelectorAll('[data-pub-stat]').forEach(node => {
+            node.textContent = pubStats[node.dataset.pubStat];
+        });
+
+        const typeCounts = { all: cards.length };
+        cards.forEach(card => { typeCounts[card.dataset.type] = (typeCounts[card.dataset.type] || 0) + 1; });
+        document.querySelectorAll('.pub-chip[data-type]').forEach(btn => {
+            btn.append(` (${typeCounts[btn.dataset.type] || 0})`);
+        });
+        document.querySelectorAll('.pub-chip[data-topic]').forEach(btn => {
+            if (btn.dataset.topic === 'all') return;
+            btn.append(` (${cards.filter(card => card.dataset.topics.includes(btn.dataset.topic)).length})`);
+        });
+
+        const PAGE_SIZE = 15;
+        let pubTopic = 'all';
+        let pubType = 'all';
+        let showAll = false;
+        const pubSearch = document.getElementById('pub-search');
+        const pubEmpty = document.querySelector('.pub-empty');
+        const pubMore = document.querySelector('.pub-more');
+        const applyPubFilters = () => {
+            const query = pubSearch.value.trim().toLowerCase();
+            const filtering = query || pubTopic !== 'all' || pubType !== 'all';
+            let shown = 0;
+            let matched = 0;
+            cards.forEach(card => {
+                const match = (pubTopic === 'all' || card.dataset.topics.includes(pubTopic))
+                    && (pubType === 'all' || card.dataset.type === pubType)
+                    && card.textContent.toLowerCase().includes(query);
+                if (match) matched++;
+                const show = match && (filtering || showAll || matched <= PAGE_SIZE);
+                card.style.display = show ? '' : 'none';
+                if (show) shown++;
+            });
+            pubEmpty.hidden = matched > 0;
+            pubMore.hidden = filtering || showAll || matched <= PAGE_SIZE;
+            pubMore.textContent = `Show all ${matched} publications`;
+        };
+        const bindChips = (attr, setter) => {
+            const chips = document.querySelectorAll(`.pub-chip[data-${attr}]`);
+            chips.forEach(chip => chip.addEventListener('click', () => {
+                chips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                setter(chip.dataset[attr]);
+                applyPubFilters();
+            }));
+        };
+        bindChips('topic', value => { pubTopic = value; });
+        bindChips('type', value => { pubType = value; });
+        pubSearch.addEventListener('input', applyPubFilters);
+        pubMore.addEventListener('click', () => { showAll = true; applyPubFilters(); });
+        applyPubFilters();
     }
+
+    // Keep About stats in sync with the other tabs' content
+    const statCounts = {
+        publications: publications.length,
+        patents: document.querySelectorAll('#patents .patent-card').length,
+        projects: document.querySelectorAll('#projects .project-card').length,
+    };
+    document.querySelectorAll('[data-stat]').forEach(el => {
+        const count = statCounts[el.dataset.stat];
+        if (count) el.textContent = count;
+    });
+
+    // Experience: live counts and category filter
+    const expItems = document.querySelectorAll('.exp-item');
+    const expCounts = { all: expItems.length };
+    expItems.forEach(item => {
+        expCounts[item.dataset.category] = (expCounts[item.dataset.category] || 0) + 1;
+    });
+    document.querySelectorAll('[data-filter-count]').forEach(el => {
+        el.textContent = expCounts[el.dataset.filterCount] || 0;
+    });
+    const expStats = {
+        years: new Date().getFullYear() - 1999,
+        current: document.querySelectorAll('.exp-item.is-current').length,
+        total: expItems.length,
+    };
+    document.querySelectorAll('[data-exp]').forEach(el => {
+        el.textContent = expStats[el.dataset.exp];
+    });
+
+    const filterButtons = document.querySelectorAll('[data-filter]');
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            expItems.forEach(item => {
+                const show = btn.dataset.filter === 'all' || item.dataset.category === btn.dataset.filter;
+                item.style.display = show ? '' : 'none';
+            });
+        });
+    });
+
+    // Projects: status from end date, live counts, filter and search
+    const projectCards = [...document.querySelectorAll('.project-card')];
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    projectCards.forEach(card => {
+        if (!card.dataset.end) return;
+        const active = card.dataset.end >= thisMonth;
+        card.classList.toggle('is-active', active);
+        card.querySelector('.status-text').textContent = active ? 'Active' : 'Concluded';
+    });
+    const projectMatches = {
+        all: () => true,
+        active: card => card.classList.contains('is-active'),
+        concluded: card => card.dataset.end && !card.classList.contains('is-active'),
+        virtech: card => card.dataset.org === 'virtech',
+    };
+    document.querySelectorAll('[data-proj-count]').forEach(el => {
+        el.textContent = projectCards.filter(projectMatches[el.dataset.projCount]).length;
+    });
+    const projectStats = {
+        total: projectCards.length,
+        active: projectCards.filter(projectMatches.active).length,
+        framework: projectCards.filter(card => card.dataset.framework).length,
+    };
+    document.querySelectorAll('[data-proj]').forEach(el => {
+        el.textContent = projectStats[el.dataset.proj];
+    });
+
+    let projectFilter = 'all';
+    const projectSearch = document.getElementById('project-search');
+    const projectEmpty = document.querySelector('.project-empty');
+    const applyProjectFilter = () => {
+        const query = projectSearch.value.trim().toLowerCase();
+        let shown = 0;
+        projectCards.forEach(card => {
+            const show = projectMatches[projectFilter](card) && card.textContent.toLowerCase().includes(query);
+            card.style.display = show ? '' : 'none';
+            if (show) shown++;
+        });
+        projectEmpty.hidden = shown > 0;
+    };
+    document.querySelectorAll('[data-project-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-project-filter]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            projectFilter = btn.dataset.projectFilter;
+            applyProjectFilter();
+        });
+    });
+    projectSearch.addEventListener('input', applyProjectFilter);
+
+    // Education: counts from the cards themselves
+    const eduStats = {
+        degrees: document.querySelectorAll('.degree-card').length,
+        fellowships: document.querySelectorAll('.fellow-card').length,
+    };
+    document.querySelectorAll('[data-edu-stat]').forEach(node => {
+        node.textContent = eduStats[node.dataset.eduStat];
+    });
+
+    // Patents: live counts, jurisdiction filter and search
+    const patentCards = [...document.querySelectorAll('.patent-card')];
+    const patentMatches = {
+        all: () => true,
+        us: card => card.dataset.jurisdiction === 'us',
+        bg: card => card.dataset.jurisdiction === 'bg',
+    };
+    document.querySelectorAll('[data-patent-count], [data-patent-stat]').forEach(node => {
+        const key = node.dataset.patentCount || node.dataset.patentStat;
+        node.textContent = patentCards.filter(patentMatches[key]).length;
+    });
+    let patentFilter = 'all';
+    const patentSearch = document.getElementById('patent-search');
+    const patentEmpty = document.querySelector('.patent-empty');
+    const applyPatentFilter = () => {
+        const query = patentSearch.value.trim().toLowerCase();
+        let shown = 0;
+        patentCards.forEach(card => {
+            const show = patentMatches[patentFilter](card) && card.textContent.toLowerCase().includes(query);
+            card.style.display = show ? '' : 'none';
+            if (show) shown++;
+        });
+        patentEmpty.hidden = shown > 0;
+    };
+    document.querySelectorAll('[data-patent-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-patent-filter]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            patentFilter = btn.dataset.patentFilter;
+            applyPatentFilter();
+        });
+    });
+    patentSearch.addEventListener('input', applyPatentFilter);
+
+    // Awards: each attendance period counts as its own award
+    const awardTotal = document.querySelectorAll('.award-card:not(.is-merit)').length
+        + document.querySelectorAll('.award-period').length;
+    document.querySelectorAll('[data-award-stat="total"]').forEach(node => {
+        node.textContent = awardTotal;
+    });
 
     // Tab Switching Logic
     const tabs = document.querySelectorAll('.tab');
